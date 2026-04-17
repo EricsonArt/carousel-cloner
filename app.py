@@ -1,9 +1,8 @@
 """
-Carousel Cloner — Streamlit Dashboard
-Rekreacja wiralowych karuzeli z TikToka/Instagrama.
-
-Uruchom: python -m streamlit run app.py --server.port 8502
+Carousel Cloner — auto-pipeline Streamlit app.
+Wklej link → wszystko dzieje się automatycznie → ZIP auto-pobiera się.
 """
+import base64
 import sys
 import time
 from pathlib import Path
@@ -14,9 +13,9 @@ PROJECT_DIR = Path(__file__).parent
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
-from config import OUTPUTS_DIR, TEMP_DIR, DEFAULT_CTA_TEXT
+from config import OUTPUTS_DIR, DEFAULT_CTA_TEXT
 
-# ─── Konfiguracja strony ─────────────────────────────────────────────────────
+# ─── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Carousel Cloner",
     page_icon="🎠",
@@ -24,66 +23,199 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ─── CSS — ciemny motyw ──────────────────────────────────────────────────────
+# ─── Premium CSS ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; }
+/* Globalne */
+.stApp {
+    background: radial-gradient(ellipse at top, #1a0e2e 0%, #0a0514 50%, #050309 100%);
+    background-attachment: fixed;
+}
 
-    .main-header {
-        background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
-        padding: 2rem 2.5rem;
-        border-radius: 14px;
-        margin-bottom: 1.8rem;
-        text-align: center;
-        border: 1px solid #2a1a4e;
-        box-shadow: 0 4px 24px rgba(100,0,255,0.12);
-    }
-    .main-header h1 { color: #a855f7; font-size: 2.4rem; margin: 0; }
-    .main-header p  { color: #8b7fc7; margin: 0.5rem 0 0; font-size: 1rem; }
+#MainMenu, footer, header { visibility: hidden; }
+.block-container { padding-top: 2rem; max-width: 1100px; }
 
-    .tip-box {
-        background: #1a1a2e;
-        border-left: 4px solid #a855f7;
-        padding: 0.9rem 1.2rem;
-        border-radius: 0 8px 8px 0;
-        color: #b0a0d0;
-        font-size: 0.9rem;
-        margin: 0.8rem 0;
-    }
-    .success-box {
-        background: linear-gradient(135deg, #0d3d25, #145c38);
-        border: 1px solid #00e676;
-        padding: 1rem 1.4rem;
-        border-radius: 10px;
-        color: #00e676;
-        font-weight: bold;
-        text-align: center;
-        margin: 1rem 0;
-    }
-    .warning-box {
-        background: #2d1f0d;
-        border: 1px solid #ff9800;
-        padding: 0.8rem 1.2rem;
-        border-radius: 8px;
-        color: #ffb74d;
-        margin: 0.5rem 0;
-    }
+/* Hero */
+.hero {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    margin-bottom: 1rem;
+}
+.hero-title {
+    font-size: 4rem;
+    font-weight: 900;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #c084fc 0%, #f472b6 50%, #fb923c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+    line-height: 1;
+}
+.hero-subtitle {
+    font-size: 1.15rem;
+    color: #a0a0b8;
+    margin-top: 1rem;
+    font-weight: 400;
+}
+
+/* Glass card */
+.glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    border-radius: 20px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Inputs */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea {
+    background: rgba(30, 20, 45, 0.8) !important;
+    border: 1.5px solid rgba(168, 85, 247, 0.3) !important;
+    border-radius: 12px !important;
+    color: #fff !important;
+    font-size: 1rem !important;
+    padding: 0.75rem 1rem !important;
+    transition: all 0.2s ease;
+}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: #c084fc !important;
+    box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.15) !important;
+}
+
+/* Primary button */
+.stButton > button[kind="primary"],
+.stDownloadButton > button {
+    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%) !important;
+    border: none !important;
+    border-radius: 14px !important;
+    padding: 0.9rem 2rem !important;
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: white !important;
+    box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4) !important;
+    transition: all 0.2s ease !important;
+    letter-spacing: 0.3px;
+}
+.stButton > button[kind="primary"]:hover,
+.stDownloadButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6) !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0.5rem;
+    background: rgba(20, 15, 35, 0.5);
+    padding: 0.4rem;
+    border-radius: 14px;
+}
+.stTabs [data-baseweb="tab"] {
+    background: transparent;
+    border-radius: 10px;
+    padding: 0.7rem 1.4rem;
+    color: #a0a0b8;
+    font-weight: 600;
+    border: none !important;
+}
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%) !important;
+    color: white !important;
+}
+
+/* Progress bar */
+.stProgress > div > div {
+    background: linear-gradient(90deg, #a855f7, #ec4899) !important;
+    border-radius: 10px !important;
+}
+
+/* Success banner */
+.success-banner {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    color: #6ee7b7;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1rem 0;
+}
+
+/* Step indicator */
+.step-row {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 0;
+    color: #d0d0e0;
+    font-size: 0.95rem;
+}
+.step-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+.step-done { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+.step-active { background: linear-gradient(135deg, #a855f7, #ec4899); color: white; animation: pulse 1.5s infinite; }
+.step-pending { background: rgba(255,255,255,0.08); color: #666; border: 1px solid rgba(255,255,255,0.1); }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Slide grid thumbnail */
+.slide-thumb {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    transition: transform 0.2s ease;
+}
+.slide-thumb:hover {
+    transform: scale(1.03);
+}
+
+/* Labels */
+.stTextInput label, .stTextArea label, .stFileUploader label {
+    color: #d0d0e0 !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+}
+
+/* File uploader */
+[data-testid="stFileUploaderDropzone"] {
+    background: rgba(30, 20, 45, 0.5) !important;
+    border: 2px dashed rgba(168, 85, 247, 0.4) !important;
+    border-radius: 14px !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Header ──────────────────────────────────────────────────────────────────
-st.markdown("""
-<div class="main-header">
-    <h1>Carousel Cloner</h1>
-    <p>Rekreacja wiralowych karuzeli z TikToka i Instagrama</p>
-</div>
-""", unsafe_allow_html=True)
 
-# ─── Session State ────────────────────────────────────────────────────────────
-if "phase" not in st.session_state:
-    st.session_state["phase"] = 1
-if "session_id" not in st.session_state:
-    st.session_state["session_id"] = str(int(time.time()))
+# ─── Session state ───────────────────────────────────────────────────────────
+def _init_state():
+    for key, default in [
+        ("session_id", str(int(time.time()))),
+        ("generated", False),
+        ("zip_path", None),
+        ("slides_preview", []),
+        ("summary", {}),
+    ]:
+        if key not in st.session_state:
+            st.session_state[key] = default
+
+
+_init_state()
 
 
 def _session_dir() -> Path:
@@ -92,379 +224,274 @@ def _session_dir() -> Path:
     return d
 
 
-def _run_analysis_pipeline(download_result, session_dir):
-    """Krok 2+3: ekstrakcja slajdów + OCR — wspólny dla obu trybów."""
-    slides_dir = session_dir / "original_slides"
+def _reset():
+    for key in ["generated", "zip_path", "slides_preview", "summary"]:
+        st.session_state[key] = [] if key == "slides_preview" else ({} if key == "summary" else (False if key == "generated" else None))
+    st.session_state["session_id"] = str(int(time.time()))
 
-    # Ekstrakcja slajdów
-    with st.status("Ekstrakcja slajdow...", expanded=True) as status:
-        if download_result.media_type == "video" and download_result.files:
-            st.write("Wykrywanie zmian scen w wideo...")
-            from modules.slide_extractor import extract_slides
-            slide_paths = extract_slides(download_result.files[0], slides_dir)
-            if not slide_paths:
-                status.update(label="Blad!", state="error")
-                st.error("Nie znaleziono zadnych slajdow w wideo. Sprobuj trybu 'Wgraj pliki'.")
-                return None
-            st.write(f"Znaleziono {len(slide_paths)} slajdow")
-        elif download_result.media_type == "images":
-            slide_paths = download_result.files
-            # Kopiuj do slides_dir
-            slides_dir.mkdir(parents=True, exist_ok=True)
-            new_paths = []
-            for i, f in enumerate(slide_paths, start=1):
-                dest = slides_dir / f"slide_{i:02d}{f.suffix}"
-                import shutil
-                shutil.copy2(str(f), str(dest))
-                new_paths.append(dest)
-            slide_paths = new_paths
-            st.write(f"Zaladowano {len(slide_paths)} obrazow")
-        else:
-            status.update(label="Blad!", state="error")
-            st.error("Nie znaleziono plikow do przetworzenia.")
-            return None
 
-        st.session_state["original_slides"] = slide_paths
-        status.update(label=f"Wyekstrahowano {len(slide_paths)} slajdow!", state="complete")
+def _auto_download_html(zip_path: Path, filename: str = "karuzela.zip") -> str:
+    """Zwraca HTML który auto-pobiera ZIP po stronie klienta."""
+    data = zip_path.read_bytes()
+    b64 = base64.b64encode(data).decode()
+    return f"""
+    <script>
+    (function() {{
+        const data = "data:application/zip;base64,{b64}";
+        const link = document.createElement('a');
+        link.href = data;
+        link.download = "{filename}";
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => link.remove(), 1000);
+    }})();
+    </script>
+    """
 
-    # OCR
-    with st.status("Analiza tekstu na slajdach (Gemini Vision)...", expanded=True) as status:
-        from modules.ocr_reader import extract_all_slides
 
-        progress_bar = st.progress(0)
-
-        def ocr_progress(current, total):
-            progress_bar.progress(current / total, text=f"Slajd {current}/{total}")
-
-        slide_texts = extract_all_slides(slide_paths, progress_callback=ocr_progress)
-        st.session_state["slide_texts"] = slide_texts
-        status.update(label="Analiza zakonczona!", state="complete")
-
-    return slide_paths
+# ─── Hero ────────────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="hero">
+    <h1 class="hero-title">Carousel Cloner</h1>
+    <p class="hero-subtitle">Wklej link do TikToka lub Instagrama → dostajesz gotową karuzelę do publikacji</p>
+</div>
+""", unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FAZA 1 — Wejście
+# Main flow: wprowadzenie → automatyczny pipeline → auto-download
 # ═══════════════════════════════════════════════════════════════════════════════
-if st.session_state["phase"] == 1:
-    st.markdown("### Faza 1: Zrodlo karuzeli")
 
-    cta_text = st.text_input(
-        "Tekst CTA (ostatni slajd)",
-        value=DEFAULT_CTA_TEXT,
-        key="input_cta",
-    )
+if not st.session_state["generated"]:
+    # ── Formularz ─────────────────────────────────────────────────────────────
+    tab_url, tab_upload = st.tabs(["🔗 Wklej link", "📁 Wgraj pliki"])
 
-    # ── Dwa tryby ──────────────────────────────────────────────────────────────
-    tab_url, tab_upload = st.tabs(["URL (automatyczny)", "Wgraj pliki (niezawodny)"])
-
-    # ── TAB 1: URL ────────────────────────────────────────────────────────────
     with tab_url:
-        st.markdown('<div class="warning-box">TikTok blokuje automatyczne pobieranie. Jesli URL nie zadziala, uzyj zakladki "Wgraj pliki" po prawo. Potrzebny plik cookies.txt z przegladarki.</div>', unsafe_allow_html=True)
-
         url = st.text_input(
-            "Link do posta (TikTok lub Instagram)",
-            placeholder="https://www.tiktok.com/@user/video/...",
+            "Link do posta",
+            placeholder="https://www.tiktok.com/@user/photo/...  lub  https://www.instagram.com/p/...",
             key="input_url",
+            label_visibility="collapsed",
         )
 
-        with st.expander("Mam plik cookies.txt (opcjonalne — pomaga z TikTokiem)"):
-            cookies_file = st.file_uploader(
-                "Wgraj plik cookies.txt (wyeksportowany z przegladarki)",
-                type=["txt"],
-                key="cookies_upload",
+        col_a, col_b = st.columns([3, 1])
+        with col_a:
+            cta_text = st.text_input(
+                "Tekst CTA (ostatni slajd)",
+                value=DEFAULT_CTA_TEXT,
+                key="cta_url",
             )
-            st.markdown('<div class="tip-box">Jak zdobyc cookies.txt: zainstaluj w Chrome/Edge rozszerzenie "Get cookies.txt LOCALLY", wejdz na tiktok.com (zalogowany), kliknij rozszerzenie i "Export cookies". Wgraj plik tutaj.</div>', unsafe_allow_html=True)
+        with col_b:
+            st.markdown("<div style='height:1.85rem'></div>", unsafe_allow_html=True)
+            start_url = st.button("✨ Sklonuj", type="primary", use_container_width=True, key="btn_url")
 
-        if st.button("Pobierz i analizuj", type="primary", use_container_width=True):
-            if not url.strip():
-                st.error("Podaj link do posta!")
-            else:
-                session_dir = _session_dir()
-                temp_dir = session_dir / "downloaded"
+        auto_run_url = start_url and url.strip()
 
-                # Zapisz cookies.txt jeśli dostarczony
-                cookies_path = None
-                if cookies_file:
-                    cookies_path = temp_dir / "cookies.txt"
-                    temp_dir.mkdir(parents=True, exist_ok=True)
-                    cookies_path.write_bytes(cookies_file.read())
-
-                with st.status("Pobieranie posta...", expanded=True) as status:
-                    st.write("Laczenie z platforma...")
-                    try:
-                        from modules.downloader import download_post
-                        result = download_post(url, temp_dir, cookies_path=cookies_path)
-                        st.write(f"Pobrano: {result.media_type} ({len(result.files)} plikow)")
-                        st.session_state["download_result"] = result
-                        st.session_state["cta_text"] = cta_text
-                        status.update(label="Pobrano!", state="complete")
-                    except Exception as e:
-                        status.update(label="Blad pobierania!", state="error")
-                        err_msg = str(e)
-                        if "blocked" in err_msg.lower() or "IP" in err_msg:
-                            st.error(
-                                "TikTok zablokował pobieranie. Rozwiązania:\n"
-                                "1. Wgraj plik cookies.txt (instrukcja wyżej)\n"
-                                "2. Użyj zakładki 'Wgraj pliki' — pobierz slajdy samodzielnie\n"
-                                f"\nSzczegóły błędu: {err_msg[:200]}"
-                            )
-                        else:
-                            st.error(f"Blad: {err_msg[:300]}")
-                        st.stop()
-
-                slide_paths = _run_analysis_pipeline(
-                    st.session_state["download_result"], session_dir
-                )
-                if slide_paths:
-                    st.session_state["phase"] = 2
-                    st.rerun()
-
-    # ── TAB 2: Ręczny upload ──────────────────────────────────────────────────
     with tab_upload:
-        st.markdown('<div class="tip-box">Pobierz slajdy samodzielnie ze strony <b>ssstik.io</b> lub <b>snaptik.app</b> (wklej link do TikToka, pobierz zdjecia/wideo), a nastepnie wgraj je tutaj.</div>', unsafe_allow_html=True)
-
-        uploaded_files = st.file_uploader(
-            "Wgraj slajdy (obrazy PNG/JPG) lub wideo (MP4)",
-            type=["png", "jpg", "jpeg", "webp", "mp4", "mov", "webm"],
+        uploaded = st.file_uploader(
+            "Wgraj slajdy lub wideo",
+            type=["png", "jpg", "jpeg", "webp", "mp4", "mov"],
             accept_multiple_files=True,
-            key="manual_upload",
+            key="upload_files",
+            label_visibility="collapsed",
         )
 
-        col1, col2 = st.columns(2)
-        with col1:
-            manual_desc = st.text_area(
-                "Oryginalny opis posta (wklej z TikToka/IG)",
-                placeholder="Napisz lub wklej oryginał opisu...",
-                key="manual_desc",
-                height=100,
-            )
-        with col2:
-            manual_hashtags = st.text_input(
-                "Hashtagi (opcjonalne)",
-                placeholder="#viral #tiktok #tips",
-                key="manual_hashtags",
-            )
+        col_u1, col_u2 = st.columns(2)
+        with col_u1:
+            manual_desc = st.text_area("Opis oryginalny (opcjonalne)", height=90, key="md")
+        with col_u2:
+            manual_hashtags = st.text_input("Hashtagi", placeholder="#viral #tiktok", key="mh")
 
-        if st.button("Zaladuj i analizuj", type="primary", use_container_width=True, key="btn_upload"):
-            if not uploaded_files:
-                st.error("Wgraj co najmniej jeden plik!")
+        col_c, col_d = st.columns([3, 1])
+        with col_c:
+            cta_text_u = st.text_input("Tekst CTA (ostatni slajd)", value=DEFAULT_CTA_TEXT, key="cta_u")
+        with col_d:
+            st.markdown("<div style='height:1.85rem'></div>", unsafe_allow_html=True)
+            start_upload = st.button("✨ Sklonuj", type="primary", use_container_width=True, key="btn_u")
+
+        auto_run_upload = start_upload and uploaded
+
+    # ── Info box ─────────────────────────────────────────────────────────────
+    if not (auto_run_url or auto_run_upload):
+        st.markdown("""
+        <div class="glass-card" style="text-align:center; padding: 1.2rem;">
+            <span style="color:#a0a0b8; font-size:0.9rem;">
+                💡 Wszystko dzieje się automatycznie — wklej, kliknij raz, czekaj. ZIP pobiera się sam.
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── Pipeline ──────────────────────────────────────────────────────────────
+    if auto_run_url or auto_run_upload:
+        session_dir = _session_dir()
+        temp_dir = session_dir / "downloaded"
+        slides_dir = session_dir / "original_slides"
+        new_slides_dir = session_dir / "new_slides"
+
+        progress = st.progress(0, text="Startuje...")
+        status_container = st.empty()
+
+        try:
+            # ═══ KROK 1: Pobieranie / upload ═══
+            progress.progress(10, text="📥 Pobieranie posta...")
+            if auto_run_url:
+                from modules.downloader import download_post
+                download_result = download_post(url, temp_dir)
             else:
-                session_dir = _session_dir()
-                temp_dir = session_dir / "downloaded"
-
-                with st.status("Ladowanie plikow...", expanded=True) as status:
-                    from modules.downloader import load_manual_upload
-                    result = load_manual_upload(
-                        uploaded_files,
-                        temp_dir,
-                        description=manual_desc,
-                        hashtags_text=manual_hashtags,
-                    )
-                    st.session_state["download_result"] = result
-                    st.session_state["cta_text"] = cta_text
-                    status.update(label=f"Zaladowano {len(result.files)} plikow!", state="complete")
-
-                slide_paths = _run_analysis_pipeline(result, session_dir)
-                if slide_paths:
-                    st.session_state["phase"] = 2
-                    st.rerun()
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# FAZA 2 — Przegląd i edycja
-# ═══════════════════════════════════════════════════════════════════════════════
-elif st.session_state["phase"] == 2:
-    st.markdown("### Faza 2: Przegladanie i edycja slajdow")
-
-    slide_paths = st.session_state.get("original_slides", [])
-    slide_texts = st.session_state.get("slide_texts", [])
-    download_result = st.session_state.get("download_result")
-
-    if not slide_paths or not slide_texts:
-        st.error("Brak danych. Wróc do fazy 1.")
-        if st.button("Wróc"):
-            st.session_state["phase"] = 1
-            st.rerun()
-        st.stop()
-
-    st.markdown(f'<div class="tip-box">Znaleziono <b>{len(slide_paths)} slajdow</b>. Sprawdz czy tekst jest poprawny i edytuj jesli trzeba. Mozesz tez poprawic bledy OCR zanim wygenerujesz nowe slajdy.</div>', unsafe_allow_html=True)
-
-    # Grid slajdów
-    for i in range(0, len(slide_paths), 2):
-        cols = st.columns(2)
-        for j, col in enumerate(cols):
-            idx = i + j
-            if idx >= len(slide_paths):
-                break
-            with col:
-                st.markdown(f"**Slajd {idx + 1}**")
-                if Path(slide_paths[idx]).exists():
-                    st.image(str(slide_paths[idx]), use_container_width=True)
-                original_text = slide_texts[idx].main_text if idx < len(slide_texts) else ""
-                st.text_area(
-                    f"Tekst slajdu {idx + 1}",
-                    value=original_text,
-                    key=f"text_{idx}",
-                    height=100,
+                from modules.downloader import load_manual_upload
+                download_result = load_manual_upload(
+                    uploaded, temp_dir,
+                    description=manual_desc,
+                    hashtags_text=manual_hashtags,
                 )
+                cta_text = cta_text_u
 
-    # Opis i hashtagi
-    st.markdown("---")
-    st.markdown("**Oryginalny opis:**")
-    col_d1, col_d2 = st.columns(2)
-    with col_d1:
-        original_desc = download_result.description if download_result else ""
-        st.text_area("Opis", value=original_desc, height=100, disabled=True)
-    with col_d2:
-        original_tags = download_result.hashtags if download_result else []
-        st.text_input("Hashtagi", value=" ".join(original_tags), disabled=True)
+            # ═══ KROK 2: Ekstrakcja slajdów ═══
+            progress.progress(20, text="🖼️ Wyciagam slajdy...")
+            if download_result.media_type == "video" and download_result.files:
+                from modules.slide_extractor import extract_slides
+                slide_paths = extract_slides(download_result.files[0], slides_dir)
+            else:
+                import shutil
+                slides_dir.mkdir(parents=True, exist_ok=True)
+                slide_paths = []
+                for i, f in enumerate(download_result.files, start=1):
+                    dest = slides_dir / f"slide_{i:02d}{f.suffix}"
+                    shutil.copy2(str(f), str(dest))
+                    slide_paths.append(dest)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Wróc", use_container_width=True):
-            st.session_state["phase"] = 1
-            st.rerun()
-    with col2:
-        if st.button("Generuj nowe slajdy", type="primary", use_container_width=True):
-            # Aktualizuj teksty z edytowanych pól
-            for idx in range(len(slide_texts)):
-                if f"text_{idx}" in st.session_state:
-                    slide_texts[idx].main_text = st.session_state[f"text_{idx}"]
-            st.session_state["slide_texts"] = slide_texts
-            st.session_state["phase"] = 3
-            st.rerun()
+            if not slide_paths:
+                raise RuntimeError("Nie znaleziono zadnych slajdow w poscie.")
 
+            # ═══ KROK 3: OCR ═══
+            progress.progress(30, text=f"🔍 Odczytuje tekst z {len(slide_paths)} slajdow...")
+            from modules.ocr_reader import extract_all_slides
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# FAZA 3 — Generowanie
-# ═══════════════════════════════════════════════════════════════════════════════
-elif st.session_state["phase"] == 3:
-    st.markdown("### Faza 3: Generowanie nowych slajdow")
+            def ocr_cb(cur, total):
+                progress.progress(30 + int(15 * cur / total), text=f"🔍 OCR slajdu {cur}/{total}")
 
-    slide_texts = st.session_state.get("slide_texts", [])
-    original_slides = st.session_state.get("original_slides", [])
-    download_result = st.session_state.get("download_result")
-    cta_text = st.session_state.get("cta_text", DEFAULT_CTA_TEXT)
-    session_dir = _session_dir()
-    new_slides_dir = session_dir / "new_slides"
+            slide_texts = extract_all_slides(slide_paths, progress_callback=ocr_cb)
 
-    if not slide_texts:
-        st.error("Brak danych. Wróc do fazy 1.")
-        st.stop()
-
-    # ── Generowanie (tylko raz) ───────────────────────────────────────────────
-    generated_slides = st.session_state.get("generated_slides")
-
-    if generated_slides is None:
-        # Krok 1: Nowe slajdy (Nano Banana — image-to-image edit)
-        with st.status("Generowanie nowych slajdow (Nano Banana)...", expanded=True) as status:
+            # ═══ KROK 4: Generowanie nowych slajdow (Nano Banana) ═══
+            progress.progress(45, text="🎨 Generuje nowe slajdy (Nano Banana)...")
             from modules.image_generator import recreate_all_slides
 
-            bar = st.progress(0)
-            info = st.empty()
-
-            def gen_progress(current, total):
-                bar.progress(current / total)
-                info.write(f"Slajd {current}/{total}...")
+            def gen_cb(cur, total):
+                progress.progress(45 + int(40 * cur / total), text=f"🎨 Nowy slajd {cur}/{total}")
 
             generated_slides = recreate_all_slides(
-                slide_texts,
-                new_slides_dir,
-                source_images=original_slides,
-                progress_callback=gen_progress,
+                slide_texts, new_slides_dir,
+                source_images=slide_paths,
+                progress_callback=gen_cb,
             )
-            st.session_state["generated_slides"] = generated_slides
-            status.update(label=f"Wygenerowano {len(generated_slides)} slajdow!", state="complete")
 
-        # Krok 2: CTA
-        with st.status("Generowanie slajdu CTA...", expanded=True) as status:
+            # ═══ KROK 5: CTA slide ═══
+            progress.progress(85, text="🎯 Dodaje CTA...")
             from modules.cta_generator import generate_cta
-            colors = slide_texts[0].dominant_colors if slide_texts else None
             cta_path = new_slides_dir / "slide_cta.png"
+            colors = slide_texts[0].dominant_colors if slide_texts else None
             generate_cta(cta_text, colors, cta_path)
             generated_slides.append(cta_path)
-            st.session_state["generated_slides"] = generated_slides
-            status.update(label="CTA gotowe!", state="complete")
 
-        # Krok 3: Opis
-        with st.status("Przepisywanie opisu i hashtagow...", expanded=True) as status:
+            # ═══ KROK 6: Opis ═══
+            progress.progress(92, text="✍️ Przepisuje opis i hashtagi...")
             from modules.description_rewriter import rewrite_description
-            original_desc = download_result.description if download_result else ""
-            original_tags = download_result.hashtags if download_result else []
-            rewritten = rewrite_description(original_desc, original_tags)
-            st.session_state["rewritten"] = rewritten
-            status.update(label="Opis przepisany!", state="complete")
+            rewritten = rewrite_description(
+                download_result.description,
+                download_result.hashtags,
+            )
 
-        # Krok 4: ZIP
-        with st.status("Pakowanie do ZIP...", expanded=True) as status:
+            # ═══ KROK 7: ZIP ═══
+            progress.progress(98, text="📦 Pakuje ZIP...")
             from modules.zip_builder import build_zip
-            rewritten = st.session_state["rewritten"]
             zip_path = build_zip(
                 generated_slides,
                 rewritten.description,
                 rewritten.hashtags,
                 session_dir,
             )
-            st.session_state["zip_path"] = zip_path
-            status.update(label="ZIP gotowy!", state="complete")
 
-        st.rerun()
+            progress.progress(100, text="✅ Gotowe!")
+            time.sleep(0.3)
+            progress.empty()
 
-    # ── Wyniki ────────────────────────────────────────────────────────────────
-    st.markdown('<div class="success-box">Karuzela zostala wygenerowana!</div>', unsafe_allow_html=True)
+            # Zapisz do state
+            st.session_state["generated"] = True
+            st.session_state["zip_path"] = str(zip_path)
+            st.session_state["slides_preview"] = [str(p) for p in generated_slides if p]
+            st.session_state["summary"] = {
+                "count": len(generated_slides),
+                "description": rewritten.description,
+                "hashtags": rewritten.hashtags,
+                "original_slides": [str(p) for p in slide_paths],
+            }
+            st.rerun()
 
-    st.markdown("#### Porownanie: oryginal vs nowy")
-    for i in range(len(original_slides)):
-        if i >= len(generated_slides):
-            break
-        gen_slide = generated_slides[i]
-        if gen_slide is None or not Path(gen_slide).exists():
-            continue
-        cols = st.columns(2)
-        with cols[0]:
-            st.markdown(f"**Oryginal — Slajd {i + 1}**")
-            if Path(original_slides[i]).exists():
-                st.image(str(original_slides[i]), use_container_width=True)
-        with cols[1]:
-            st.markdown(f"**Nowy — Slajd {i + 1}**")
-            st.image(str(gen_slide), use_container_width=True)
+        except Exception as e:
+            progress.empty()
+            st.error(f"❌ Błąd: {e}")
+            st.info("💡 Sprobuj zakladki 'Wgraj pliki' — pobierz slajdy samodzielnie z ssstik.io/snaptik.app i wgraj.")
 
-    # CTA
-    if len(generated_slides) > len(original_slides):
-        cta_slide = generated_slides[-1]
-        if cta_slide and Path(cta_slide).exists():
-            st.markdown("**Slajd CTA:**")
-            c = st.columns([1, 2, 1])
-            with c[1]:
-                st.image(str(cta_slide), use_container_width=True)
 
-    # Opis
-    st.markdown("---")
-    rewritten = st.session_state.get("rewritten")
-    if rewritten:
-        st.markdown("#### Przepisany opis:")
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            st.text_area("Opis", value=rewritten.description, height=120)
-        with col_r2:
-            st.text_area("Hashtagi", value=" ".join(rewritten.hashtags), height=60)
+# ═══════════════════════════════════════════════════════════════════════════════
+# WYNIK — slajdy + auto-download + opis
+# ═══════════════════════════════════════════════════════════════════════════════
+else:
+    summary = st.session_state["summary"]
+    slides_preview = st.session_state["slides_preview"]
+    zip_path = Path(st.session_state["zip_path"])
 
-    # Download ZIP
-    st.markdown("---")
-    zip_path = st.session_state.get("zip_path")
-    if zip_path and Path(zip_path).exists():
-        with open(str(zip_path), "rb") as f:
+    # Success banner
+    st.markdown(f"""
+    <div class="success-banner">
+        ✨ Karuzela gotowa — {summary['count']} slajdow + CTA + opis
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Auto-download (tylko raz)
+    if not st.session_state.get("auto_dl_done"):
+        st.components.v1.html(_auto_download_html(zip_path), height=0)
+        st.session_state["auto_dl_done"] = True
+
+    # Download button + reset
+    col_dl, col_new = st.columns([3, 1])
+    with col_dl:
+        with open(zip_path, "rb") as f:
             st.download_button(
-                label="Pobierz ZIP z karuzela",
+                "⬇️ Pobierz ZIP ponownie",
                 data=f.read(),
                 file_name="karuzela.zip",
                 mime="application/zip",
                 type="primary",
                 use_container_width=True,
             )
+    with col_new:
+        if st.button("🔄 Nowa karuzela", use_container_width=True):
+            _reset()
+            st.rerun()
 
-    if st.button("Nowa karuzela (reset)", use_container_width=True):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
+    # Preview slajdow — grid
+    st.markdown("### 🖼️ Twoje slajdy")
+    cols_per_row = 3
+    for i in range(0, len(slides_preview), cols_per_row):
+        cols = st.columns(cols_per_row)
+        for j, col in enumerate(cols):
+            idx = i + j
+            if idx >= len(slides_preview):
+                break
+            with col:
+                if Path(slides_preview[idx]).exists():
+                    label = "CTA" if idx == len(slides_preview) - 1 else f"Slajd {idx + 1}"
+                    st.markdown(f"**{label}**")
+                    st.image(slides_preview[idx], use_container_width=True)
+
+    # Opis do skopiowania
+    st.markdown("### ✍️ Opis do posta")
+    full_description = f"{summary['description']}\n\n{' '.join(summary['hashtags'])}"
+    st.text_area(
+        "Skopiuj i wklej przy publikacji",
+        value=full_description,
+        height=180,
+        key="final_desc",
+    )
