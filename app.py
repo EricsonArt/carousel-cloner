@@ -471,20 +471,27 @@ else:
             _reset()
             st.rerun()
 
-    # Preview slajdow — grid
-    st.markdown("### 🖼️ Twoje slajdy")
-    cols_per_row = 3
-    for i in range(0, len(slides_preview), cols_per_row):
-        cols = st.columns(cols_per_row)
-        for j, col in enumerate(cols):
-            idx = i + j
-            if idx >= len(slides_preview):
-                break
-            with col:
-                if Path(slides_preview[idx]).exists():
-                    label = "CTA" if idx == len(slides_preview) - 1 else f"Slajd {idx + 1}"
-                    st.markdown(f"**{label}**")
-                    st.image(slides_preview[idx], use_container_width=True)
+    # Preview slajdow — porownanie side-by-side
+    st.markdown("### 🔍 Porownanie: oryginal vs nowy")
+    originals = summary.get("original_slides", [])
+
+    for idx, new_path in enumerate(slides_preview):
+        is_cta = idx >= len(originals)
+        label = "CTA (dodatkowy slajd)" if is_cta else f"Slajd {idx + 1}"
+        st.markdown(f"#### {label}")
+
+        col_old, col_new = st.columns(2)
+        with col_old:
+            st.markdown("<div style='color:#a0a0b8; font-size:0.85rem; margin-bottom:0.4rem;'>ORYGINAL</div>", unsafe_allow_html=True)
+            if not is_cta and idx < len(originals) and Path(originals[idx]).exists():
+                st.image(originals[idx], use_container_width=True)
+            else:
+                st.markdown("<div style='color:#555; text-align:center; padding:2rem; border:1px dashed #333; border-radius:12px;'>—</div>", unsafe_allow_html=True)
+        with col_new:
+            st.markdown("<div style='color:#c084fc; font-size:0.85rem; margin-bottom:0.4rem;'>NOWY</div>", unsafe_allow_html=True)
+            if Path(new_path).exists():
+                st.image(new_path, use_container_width=True)
+        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
     # Opis do skopiowania
     st.markdown("### ✍️ Opis do posta")
