@@ -264,6 +264,31 @@ st.markdown("""
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if not st.session_state["generated"]:
+    # ── Zaawansowane: własny prompt ───────────────────────────────────────────
+    from modules.image_generator import DEFAULT_PROMPT
+
+    with st.expander("⚙️ Zaawansowane — edytuj prompt AI (opcjonalne)", expanded=False):
+        st.markdown(
+            "<div style='color:#a0a0b8; font-size:0.85rem; margin-bottom:0.5rem;'>"
+            "Ten prompt mowi AI jak ma modyfikowac slajdy. Zostaw domyslny lub "
+            "napisz wlasny (po polsku lub po angielsku). Po wygenerowaniu mozesz "
+            "wrocic i zmienic prompt by otrzymac inne wyniki."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        user_prompt = st.text_area(
+            "Prompt",
+            value=st.session_state.get("user_prompt", DEFAULT_PROMPT),
+            height=280,
+            key="user_prompt",
+            label_visibility="collapsed",
+        )
+        col_r, col_s = st.columns([1, 3])
+        with col_r:
+            if st.button("↺ Przywroc domyslny", use_container_width=True):
+                st.session_state["user_prompt"] = DEFAULT_PROMPT
+                st.rerun()
+
     # ── Formularz ─────────────────────────────────────────────────────────────
     tab_url, tab_upload = st.tabs(["🔗 Wklej link", "📁 Wgraj pliki"])
 
@@ -380,10 +405,17 @@ if not st.session_state["generated"]:
             def gen_cb(cur, total):
                 progress.progress(45 + int(40 * cur / total), text=f"🎨 Nowy slajd {cur}/{total}")
 
+            # Jesli uzytkownik zmienil prompt, uzyj jego wersji
+            effective_prompt = None
+            user_p = st.session_state.get("user_prompt", "").strip()
+            if user_p and user_p != DEFAULT_PROMPT.strip():
+                effective_prompt = user_p
+
             generated_slides = recreate_all_slides(
                 slide_texts, new_slides_dir,
                 source_images=slide_paths,
                 progress_callback=gen_cb,
+                custom_prompt=effective_prompt,
             )
 
             # ═══ KROK 5: CTA slide ═══
