@@ -418,30 +418,64 @@ if not st.session_state["generated"]:
                 custom_prompt=effective_prompt,
             )
 
-            # ═══ KROK 5: CTA slide ═══
-            progress.progress(85, text="🎯 Dodaje CTA...")
-            from modules.cta_generator import generate_cta
-            cta_path = new_slides_dir / "slide_cta.png"
-            colors = slide_texts[0].dominant_colors if slide_texts else None
-            generate_cta(cta_text, colors, cta_path)
-            generated_slides.append(cta_path)
+            # ═══ KROK 5: CTA na ostatnim slajdzie ═══
+            progress.progress(85, text="🎯 Dodaje CTA na ostatni slajd...")
+            from modules.image_generator import add_cta_to_last_slide, generate_extra_cta_slide
+            if generated_slides and generated_slides[-1]:
+                last_original = generated_slides[-1]
+                last_with_cta = new_slides_dir / "slide_last_with_cta.png"
+                add_cta_to_last_slide(
+                    last_original,
+                    cta_text=cta_text,
+                    existing_text=slide_texts[-1].main_text if slide_texts else "",
+                    output_path=last_with_cta,
+                )
+                # Podmien ostatni slajd na wersje z CTA
+                generated_slides[-1] = last_with_cta
 
-            # ═══ KROK 6: Opis ═══
-            progress.progress(92, text="✍️ Przepisuje opis i hashtagi...")
+            # ═══ KROK 6: Dodatkowy slajd CTA (opcjonalny) ═══
+            progress.progress(90, text="🎨 Dodatkowy slajd CTA...")
+            extra_cta_path = new_slides_dir / "slide_extra_cta.png"
+            ref_slide = generated_slides[-1] if generated_slides else None
+
+            extra_cta = None
+            if ref_slide and Path(ref_slide).exists():
+                extra_cta = generate_extra_cta_slide(cta_text, ref_slide, extra_cta_path)
+
+            # Fallback: premium Pillow
+            if not extra_cta:
+                from modules.cta_generator import generate_cta
+                colors = slide_texts[0].dominant_colors if slide_texts else None
+                extra_cta = generate_cta(cta_text, colors, extra_cta_path)
+
+            # ═══ KROK 7: Opis ═══
+            progress.progress(94, text="✍️ Przepisuje opis i hashtagi...")
             from modules.description_rewriter import rewrite_description
             rewritten = rewrite_description(
                 download_result.description,
                 download_result.hashtags,
             )
 
-            # ═══ KROK 7: ZIP ═══
-            progress.progress(98, text="📦 Pakuje ZIP...")
+            # ═══ KROK 8: Dwa ZIPy (z i bez dodatkowego slajdu) ═══
+            progress.progress(98, text="📦 Pakuje ZIPy...")
             from modules.zip_builder import build_zip
-            zip_path = build_zip(
+
+            # ZIP bez extra (wlasciwa karuzela z CTA na ostatnim slajdzie)
+            zip_without_extra = build_zip(
                 generated_slides,
                 rewritten.description,
                 rewritten.hashtags,
                 session_dir,
+                zip_name="karuzela.zip",
+            )
+
+            # ZIP z extra slajdem CTA
+            zip_with_extra = build_zip(
+                generated_slides + [extra_cta],
+                rewritten.description,
+                rewritten.hashtags,
+                session_dir,
+                zip_name="karuzela_z_extra.zip",
             )
 
             progress.progress(100, text="✅ Gotowe!")
@@ -450,8 +484,10 @@ if not st.session_state["generated"]:
 
             # Zapisz do state
             st.session_state["generated"] = True
-            st.session_state["zip_path"] = str(zip_path)
+            st.session_state["zip_without_extra"] = str(zip_without_extra)
+            st.session_state["zip_with_extra"] = str(zip_with_extra)
             st.session_state["slides_preview"] = [str(p) for p in generated_slides if p]
+            st.session_state["extra_cta"] = str(extra_cta) if extra_cta else None
             st.session_state["summary"] = {
                 "count": len(generated_slides),
                 "description": rewritten.description,
@@ -472,34 +508,47 @@ if not st.session_state["generated"]:
 else:
     summary = st.session_state["summary"]
     slides_preview = st.session_state["slides_preview"]
-    zip_path = Path(st.session_state["zip_path"])
+    zip_without_extra = Path(st.session_state["zip_without_extra"])
+    zip_with_extra = Path(st.session_state["zip_with_extra"])
+    extra_cta_path = st.session_state.get("extra_cta")
 
     # Success banner
     st.markdown(f"""
     <div class="success-banner">
-        ✨ Karuzela gotowa — {summary['count']} slajdow + CTA + opis
+        ✨ Karuzela gotowa — CTA na ostatnim slajdzie + opis
     </div>
     """, unsafe_allow_html=True)
 
-    # Auto-download (tylko raz)
+    # Auto-download (domyslnie bez extra)
     if not st.session_state.get("auto_dl_done"):
-        st.components.v1.html(_auto_download_html(zip_path), height=0)
+        st.components.v1.html(_auto_download_html(zip_without_extra), height=0)
         st.session_state["auto_dl_done"] = True
 
-    # Download button + reset
-    col_dl, col_new = st.columns([3, 1])
-    with col_dl:
-        with open(zip_path, "rb") as f:
+    # Dwa przyciski download + reset
+    col_a, col_b, col_new = st.columns([2, 2, 1])
+    with col_a:
+        with open(zip_without_extra, "rb") as f:
             st.download_button(
-                "⬇️ Pobierz ZIP ponownie",
+                "⬇️ Pobierz karuzele",
                 data=f.read(),
                 file_name="karuzela.zip",
                 mime="application/zip",
                 type="primary",
                 use_container_width=True,
+                help="Karuzela z CTA wbudowanym w ostatni slajd",
+            )
+    with col_b:
+        with open(zip_with_extra, "rb") as f:
+            st.download_button(
+                "⬇️ + dodatkowy slajd CTA",
+                data=f.read(),
+                file_name="karuzela_z_extra.zip",
+                mime="application/zip",
+                use_container_width=True,
+                help="Karuzela + dodatkowy slajd CTA na koncu",
             )
     with col_new:
-        if st.button("🔄 Nowa karuzela", use_container_width=True):
+        if st.button("🔄 Nowa", use_container_width=True):
             _reset()
             st.rerun()
 
@@ -524,6 +573,21 @@ else:
             if Path(new_path).exists():
                 st.image(new_path, use_container_width=True)
         st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+
+    # Extra CTA slajd — osobna sekcja
+    if extra_cta_path and Path(extra_cta_path).exists():
+        st.markdown("---")
+        st.markdown("### 🎯 Dodatkowy slajd CTA (opcjonalny)")
+        st.markdown(
+            "<div style='color:#a0a0b8; font-size:0.85rem; margin-bottom:0.8rem;'>"
+            "Ten slajd znajdziesz w pliku <code>karuzela_z_extra.zip</code>. "
+            "Pobierz oddzielnie jesli chcesz dodac go na koniec karuzeli."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        c_left, c_center, c_right = st.columns([1, 2, 1])
+        with c_center:
+            st.image(extra_cta_path, use_container_width=True)
 
     # Opis do skopiowania
     st.markdown("### ✍️ Opis do posta")

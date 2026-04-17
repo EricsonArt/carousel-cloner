@@ -140,6 +140,135 @@ def recreate_slide(
     )
 
 
+def add_cta_to_last_slide(
+    slide_path: Path,
+    cta_text: str,
+    existing_text: str,
+    output_path: Path,
+) -> Path:
+    """
+    Nakłada tekst CTA na istniejący slajd (image-to-image).
+    Zachowuje oryginalny tekst, dodaje CTA jako naturalny overlay.
+    """
+    if not GEMINI_API_KEY:
+        return _fallback_copy_original(slide_path, output_path)
+
+    existing_preserve = ""
+    if existing_text.strip():
+        existing_preserve = (
+            f"\n\nEXISTING TEXT TO KEEP EXACTLY THE SAME (do NOT modify):\n"
+            f"```\n{existing_text}\n```\n"
+        )
+
+    cta_prompt = (
+        "Add a call-to-action to this image. The image already has some text — "
+        "keep it unchanged. ADD a new call-to-action text at a visually balanced "
+        "position (bottom center or bottom area of the image, where it doesn't "
+        "overlap with existing content).\n\n"
+        f"CALL-TO-ACTION TEXT TO ADD (copy character-by-character):\n"
+        f"```\n{cta_text}\n```\n\n"
+        "STYLE RULES:\n"
+        "- Match the typography/font style of the existing text on the image\n"
+        "- Make it clearly readable — bold, with proper contrast (stroke or shadow if needed)\n"
+        "- Keep the rest of the image IDENTICAL — do not re-render products, "
+        "backgrounds, or other elements. Only add the new CTA text as an overlay.\n"
+        "- Preserve photographic realism — NOT AI-looking\n"
+        + existing_preserve
+    )
+
+    try:
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        img_bytes = Path(slide_path).read_bytes()
+        suffix = Path(slide_path).suffix.lower()
+        mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg"}.get(suffix.lstrip("."), "image/png")
+
+        response = client.models.generate_content(
+            model=NANO_BANANA_MODEL,
+            contents=[
+                cta_prompt,
+                types.Part.from_bytes(data=img_bytes, mime_type=mime),
+            ],
+        )
+
+        for part in response.candidates[0].content.parts:
+            if part.inline_data and part.inline_data.data:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_bytes(part.inline_data.data)
+                if output_path.stat().st_size > 1000:
+                    return output_path
+    except Exception as e:
+        print(f"[cta_overlay] FAILED: {e}")
+
+    return _fallback_copy_original(slide_path, output_path)
+
+
+def generate_extra_cta_slide(
+    cta_text: str,
+    reference_slide: Path,
+    output_path: Path,
+) -> Path | None:
+    """
+    Generuje NOWY dodatkowy slajd CTA przez Nano Banana (text-to-image).
+    Używa reference_slide TYLKO do ustalenia palety kolorów/vibe'u,
+    ale tworzy zupełnie nowy, minimalistyczny slajd zorientowany na CTA.
+    """
+    if not GEMINI_API_KEY:
+        return None
+
+    prompt = (
+        "Create a brand-new FINAL CALL-TO-ACTION slide for an Instagram/TikTok carousel "
+        "(9:16 portrait, similar to the reference image's dimensions).\n\n"
+        "IMPORTANT: Do NOT copy elements from the reference image. "
+        "The reference is ONLY for color palette and mood inspiration. "
+        "Create a COMPLETELY DIFFERENT composition — a fresh minimal slide.\n\n"
+        "DESIGN BRIEF:\n"
+        "- A clean, premium, minimalistic scene — think aesthetic product photography "
+        "or a stylish flat-lay or a simple gradient background with subtle texture\n"
+        "- The CTA TEXT is the STAR of the slide — huge, bold, centered, impossible to miss\n"
+        "- ONE subtle decorative element pointing attention to the text "
+        "(an arrow, a glowing dot, a minimal frame, a subtle hand pointing, or a simple icon)\n"
+        "- Plenty of breathing room around the text\n"
+        "- Pick colors that feel premium (gradients, moody tones, or clean pastels)\n"
+        "- Photographic realism OR minimalist design — NOT childish illustration, NOT busy\n"
+        "- Think: Apple-ad clean + TikTok-viral scroll-stopping\n\n"
+        f"THE ONLY TEXT ON THIS SLIDE (copy EXACTLY, character-by-character, very large and prominent):\n"
+        f"```\n{cta_text}\n```\n\n"
+        "The slide should make people want to click. Bold, clean, one focal point."
+    )
+
+    try:
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        # Uzywamy referencji tylko jako inspiracji koloru, nie jako baza do edycji
+        img_bytes = Path(reference_slide).read_bytes()
+        suffix = Path(reference_slide).suffix.lower()
+        mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg"}.get(suffix.lstrip("."), "image/png")
+
+        response = client.models.generate_content(
+            model=NANO_BANANA_MODEL,
+            contents=[
+                prompt,
+                types.Part.from_bytes(data=img_bytes, mime_type=mime),
+            ],
+        )
+
+        for part in response.candidates[0].content.parts:
+            if part.inline_data and part.inline_data.data:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_bytes(part.inline_data.data)
+                if output_path.stat().st_size > 1000:
+                    return output_path
+    except Exception as e:
+        print(f"[extra_cta] FAILED: {e}")
+
+    return None
+
+
 def recreate_all_slides(
     slide_texts: list[SlideText],
     output_dir: Path,
