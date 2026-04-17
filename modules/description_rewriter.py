@@ -10,27 +10,39 @@ from config import GEMINI_API_KEY, GEMINI_VISION_MODEL
 
 _client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
-REWRITE_PROMPT = """Przepisz ponizszy opis posta z karuzeli na Instagramie/TikToku.
+REWRITE_PROMPT = """Rewrite the following carousel post description for Instagram/TikTok.
 
-ZASADY:
-- Zachowaj ten sam przekaz, ton i styl
-- Uzyj INNYCH slow (nie kopiuj 1:1)
-- Zachowaj podobna dlugosc
-- Wygeneruj tez PODOBNE hashtagi (nie identyczne, ale z tej samej tematyki)
-- Jezeli opis jest w danym jezyku, napisz w tym samym jezyku
+RULES:
+- Keep the same message, tone and style
+- Use DIFFERENT words (don't copy 1:1)
+- Keep similar length
+- Generate SIMILAR hashtags (not identical, but same topic)
+- Write the rewritten description in this target language: {target_lang}
+- Generate hashtags appropriate for that language (but brand names stay the same)
 
-ORYGINALNY OPIS:
+ORIGINAL DESCRIPTION:
 {description}
 
-ORYGINALNE HASHTAGI:
+ORIGINAL HASHTAGS:
 {hashtags}
 
-Zwroc TYLKO czysty tekst w formacie:
-OPIS:
-(tutaj przepisany opis)
+Return ONLY plain text in this format:
+DESCRIPTION:
+(rewritten description here)
 
-HASHTAGI:
-(tutaj hashtagi oddzielone spacjami, kazdy zaczyna sie od #)"""
+HASHTAGS:
+(hashtags separated by spaces, each starting with #)"""
+
+
+LANG_DISPLAY = {
+    "original": "same language as original",
+    "polish": "Polish",
+    "english": "English",
+    "german": "German",
+    "spanish": "Spanish",
+    "french": "French",
+    "italian": "Italian",
+}
 
 
 @dataclass
@@ -42,10 +54,11 @@ class RewrittenContent:
 def rewrite_description(
     original_description: str,
     original_hashtags: list[str],
+    target_lang: str = "original",
 ) -> RewrittenContent:
     """
-    Przepisuje opis i hashtagi za pomocą Gemini.
-    Zwraca RewrittenContent z nowym opisem i hashtagami.
+    Przepisuje opis i hashtagi przez Gemini na target_lang.
+    target_lang: 'original' | 'polish' | 'english' | 'german' ...
     """
     if not _client:
         return RewrittenContent(
@@ -53,10 +66,12 @@ def rewrite_description(
             hashtags=original_hashtags,
         )
 
-    hashtags_str = " ".join(original_hashtags) if original_hashtags else "(brak)"
+    hashtags_str = " ".join(original_hashtags) if original_hashtags else "(none)"
+    lang_display = LANG_DISPLAY.get(target_lang, "same language as original")
     prompt = REWRITE_PROMPT.format(
-        description=original_description or "(brak opisu)",
+        description=original_description or "(no description)",
         hashtags=hashtags_str,
+        target_lang=lang_display,
     )
 
     response = _client.models.generate_content(
@@ -66,17 +81,23 @@ def rewrite_description(
 
     raw = response.text.strip()
 
-    # Parsuj odpowiedź
     description = ""
     hashtags = []
 
-    if "OPIS:" in raw and "HASHTAGI:" in raw:
+    # Nowy format (po angielsku)
+    if "DESCRIPTION:" in raw and "HASHTAGS:" in raw:
+        parts = raw.split("HASHTAGS:")
+        desc_part = parts[0].replace("DESCRIPTION:", "").strip()
+        hash_part = parts[1].strip() if len(parts) > 1 else ""
+        description = desc_part
+        import re
+        hashtags = re.findall(r"#\w+", hash_part)
+    # Stary format (po polsku) — fallback
+    elif "OPIS:" in raw and "HASHTAGI:" in raw:
         parts = raw.split("HASHTAGI:")
         desc_part = parts[0].replace("OPIS:", "").strip()
         hash_part = parts[1].strip() if len(parts) > 1 else ""
-
         description = desc_part
-        # Wyciągnij hashtagi
         import re
         hashtags = re.findall(r"#\w+", hash_part)
     else:

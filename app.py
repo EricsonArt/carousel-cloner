@@ -264,30 +264,72 @@ st.markdown("""
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if not st.session_state["generated"]:
-    # ── Zaawansowane: własny prompt ───────────────────────────────────────────
-    from modules.image_generator import DEFAULT_PROMPT
+    from modules.image_generator import VARIATION_PROMPTS, get_prompt_for_intensity
+    from modules.translator import LANGUAGES
 
-    with st.expander("⚙️ Zaawansowane — edytuj prompt AI (opcjonalne)", expanded=False):
+    # ── Ustawienia: intensywnosc + jezyk ─────────────────────────────────────
+    with st.expander("⚙️ Ustawienia", expanded=True):
+        col_int, col_lang = st.columns(2)
+
+        with col_int:
+            st.markdown("**Jak mocno zmieniac slajdy?**")
+            intensity_label = st.radio(
+                "intensity",
+                options=["Lekko", "Srednio", "Mocno"],
+                index=1,
+                horizontal=True,
+                label_visibility="collapsed",
+                key="intensity_label",
+            )
+            intensity_map = {"Lekko": "light", "Srednio": "medium", "Mocno": "strong"}
+            intensity = intensity_map[intensity_label]
+            st.markdown(
+                {
+                    "light": "<span style='color:#a0a0b8; font-size:0.82rem;'>Prawie identyczne — zmiana katu/koloru jednego detalu</span>",
+                    "medium": "<span style='color:#a0a0b8; font-size:0.82rem;'>Ten sam produkt, inne tlo i otoczenie (rekomendowane)</span>",
+                    "strong": "<span style='color:#a0a0b8; font-size:0.82rem;'>Inna scena, inny kat, inne rekwizyty — trudne do wykrycia</span>",
+                }[intensity],
+                unsafe_allow_html=True,
+            )
+
+        with col_lang:
+            st.markdown("**Jezyk tekstu na slajdach**")
+            lang_display = st.selectbox(
+                "language",
+                options=list(LANGUAGES.values()),
+                index=0,
+                label_visibility="collapsed",
+                key="lang_display",
+            )
+            # Odwrotna mapa
+            lang_code = {v: k for k, v in LANGUAGES.items()}[lang_display]
+            st.markdown(
+                "<span style='color:#a0a0b8; font-size:0.82rem;'>Tekst na slajdach "
+                "i opis zostana przetlumaczone na wybrany jezyk.</span>",
+                unsafe_allow_html=True,
+            )
+
+    # ── Zaawansowane: własny prompt ───────────────────────────────────────────
+    base_prompt = get_prompt_for_intensity(intensity)
+
+    with st.expander("⚙️ Zaawansowane — wlasny prompt AI", expanded=False):
         st.markdown(
             "<div style='color:#a0a0b8; font-size:0.85rem; margin-bottom:0.5rem;'>"
-            "Ten prompt mowi AI jak ma modyfikowac slajdy. Zostaw domyslny lub "
-            "napisz wlasny (po polsku lub po angielsku). Po wygenerowaniu mozesz "
-            "wrocic i zmienic prompt by otrzymac inne wyniki."
+            "Prompt mowi AI jak ma modyfikowac slajdy. Mozesz napisac swoj wlasny "
+            "(po polsku lub po angielsku) — wtedy ustawienie 'intensywnosci' zostaje nadpisane."
             "</div>",
             unsafe_allow_html=True,
         )
         user_prompt = st.text_area(
             "Prompt",
-            value=st.session_state.get("user_prompt", DEFAULT_PROMPT),
-            height=280,
+            value=st.session_state.get("user_prompt", base_prompt),
+            height=240,
             key="user_prompt",
             label_visibility="collapsed",
         )
-        col_r, col_s = st.columns([1, 3])
-        with col_r:
-            if st.button("↺ Przywroc domyslny", use_container_width=True):
-                st.session_state["user_prompt"] = DEFAULT_PROMPT
-                st.rerun()
+        if st.button("↺ Uzyj promptu z wybranej intensywnosci", use_container_width=False):
+            st.session_state["user_prompt"] = base_prompt
+            st.rerun()
 
     # ── Formularz ─────────────────────────────────────────────────────────────
     tab_url, tab_upload = st.tabs(["🔗 Wklej link", "📁 Wgraj pliki"])
@@ -398,6 +440,16 @@ if not st.session_state["generated"]:
 
             slide_texts = extract_all_slides(slide_paths, progress_callback=ocr_cb)
 
+            # ═══ KROK 3b: Tlumaczenie tekstow (jesli wybrany jezyk != original) ═══
+            if lang_code != "original":
+                progress.progress(43, text=f"🌐 Tlumacze na {lang_display}...")
+                from modules.translator import translate_slide_texts
+
+                def tr_cb(cur, total):
+                    progress.progress(43 + int(2 * cur / total), text=f"🌐 Tlumaczenie {cur}/{total}")
+
+                slide_texts = translate_slide_texts(slide_texts, lang_code, progress_callback=tr_cb)
+
             # ═══ KROK 4: Generowanie nowych slajdow (Nano Banana) ═══
             progress.progress(45, text="🎨 Generuje nowe slajdy (Nano Banana)...")
             from modules.image_generator import recreate_all_slides
@@ -405,11 +457,12 @@ if not st.session_state["generated"]:
             def gen_cb(cur, total):
                 progress.progress(45 + int(40 * cur / total), text=f"🎨 Nowy slajd {cur}/{total}")
 
-            # Jesli uzytkownik zmienil prompt, uzyj jego wersji
-            effective_prompt = None
+            # Wybierz prompt: custom (jesli edytowany) albo bazowy z wybranej intensywnosci
             user_p = st.session_state.get("user_prompt", "").strip()
-            if user_p and user_p != DEFAULT_PROMPT.strip():
+            if user_p and user_p != base_prompt.strip():
                 effective_prompt = user_p
+            else:
+                effective_prompt = base_prompt
 
             generated_slides = recreate_all_slides(
                 slide_texts, new_slides_dir,
@@ -454,6 +507,7 @@ if not st.session_state["generated"]:
             rewritten = rewrite_description(
                 download_result.description,
                 download_result.hashtags,
+                target_lang=lang_code,
             )
 
             # ═══ KROK 8: Dwa ZIPy (z i bez dodatkowego slajdu) ═══

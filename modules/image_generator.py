@@ -14,8 +14,22 @@ from modules.ocr_reader import SlideText
 NANO_BANANA_MODEL = "gemini-2.5-flash-image"
 
 
-# Domyślny prompt — balans: te same produkty, inne tło
-DEFAULT_PROMPT = (
+# ─── 3 poziomy intensywnosci wariacji ───────────────────────────────────────
+LIGHT_PROMPT = (
+    "This is a real photograph. Create a SUBTLE variation — like another take "
+    "from the SAME photoshoot, same scene, slightly different moment.\n\n"
+    "KEEP EVERYTHING ALMOST IDENTICAL:\n"
+    "- Same products, same subjects, same background, same setting, same composition\n"
+    "- Same photographic realism — NOT AI, NOT CGI\n\n"
+    "ONLY CHANGE (small, natural shifts):\n"
+    "- Camera angle by 5-15 degrees, or tiny zoom change\n"
+    "- Color of ONE small element (e.g. one item's color)\n"
+    "- Very slight lighting tone (warmer/cooler by a bit)\n\n"
+    "The result should look like a second shot from the same session. "
+    "Minimal visible difference, but technically a different photo."
+)
+
+MEDIUM_PROMPT = (
     "This is a real photograph. Create a realistic variation where the MAIN SUBJECTS "
     "(products, devices, people, items on screen) stay visually identical, but the "
     "BACKGROUND and ENVIRONMENT change noticeably.\n\n"
@@ -33,9 +47,40 @@ DEFAULT_PROMPT = (
     "- Ambient props NOT in focus (different plants, different cups, different decor)\n\n"
     "GOAL: the subject/product is CLEARLY the same, but anyone looking at both photos "
     "would instantly see they're different shots in different settings. "
-    "Look like a professional product photographer took the same item in a different location. "
     "Natural, realistic, no AI artifacts, TikTok-worthy quality."
 )
+
+STRONG_PROMPT = (
+    "This is a real photograph. Create a STRONGLY DIFFERENT variation that "
+    "delivers the same message in a completely different visual way.\n\n"
+    "KEEP (the message identity):\n"
+    "- Same core product/topic identity (if original shows a reselling shop → still shows reselling-related)\n"
+    "- Same photographic realism — NOT AI, NOT CGI, NOT illustration\n\n"
+    "CHANGE SIGNIFICANTLY:\n"
+    "- Different device/medium (e.g. laptop → phone → tablet → notebook mockup)\n"
+    "- Different scene/location (e.g. dark desk → outdoor cafe → bedroom → modern office)\n"
+    "- Different camera angle, framing, perspective\n"
+    "- Different lighting and mood entirely\n"
+    "- Different props, different surface, different atmosphere\n"
+    "- Different hands / pose / person setup (if applicable)\n\n"
+    "GOAL: someone scrolling past both would NOT realize they're about the same topic "
+    "until they read the text. Very different visuals, same message. "
+    "Photorealistic, professional creator style, no AI artifacts."
+)
+
+VARIATION_PROMPTS = {
+    "light": LIGHT_PROMPT,
+    "medium": MEDIUM_PROMPT,
+    "strong": STRONG_PROMPT,
+}
+
+# Alias dla backward compatibility
+DEFAULT_PROMPT = MEDIUM_PROMPT
+
+
+def get_prompt_for_intensity(intensity: str) -> str:
+    """Zwraca bazowy prompt dla danej intensywnosci: 'light' | 'medium' | 'strong'."""
+    return VARIATION_PROMPTS.get(intensity, MEDIUM_PROMPT)
 
 
 def _build_prompt(exact_text: str, custom_prompt: str | None = None) -> str:
