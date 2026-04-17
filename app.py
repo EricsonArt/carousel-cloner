@@ -357,8 +357,8 @@ elif st.session_state["phase"] == 3:
     generated_slides = st.session_state.get("generated_slides")
 
     if generated_slides is None:
-        # Krok 1: Nowe slajdy
-        with st.status("Generowanie nowych slajdow (Imagen + Pillow)...", expanded=True) as status:
+        # Krok 1: Nowe slajdy (Nano Banana — image-to-image edit)
+        with st.status("Generowanie nowych slajdow (Nano Banana)...", expanded=True) as status:
             from modules.image_generator import recreate_all_slides
 
             bar = st.progress(0)
@@ -369,7 +369,10 @@ elif st.session_state["phase"] == 3:
                 info.write(f"Slajd {current}/{total}...")
 
             generated_slides = recreate_all_slides(
-                slide_texts, new_slides_dir, progress_callback=gen_progress
+                slide_texts,
+                new_slides_dir,
+                source_images=original_slides,
+                progress_callback=gen_progress,
             )
             st.session_state["generated_slides"] = generated_slides
             status.update(label=f"Wygenerowano {len(generated_slides)} slajdow!", state="complete")
