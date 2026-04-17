@@ -24,14 +24,34 @@ from modules.ocr_reader import SlideText
 NANO_BANANA_MODEL = "gemini-2.5-flash-image"
 
 
-NANO_BANANA_PROMPT = (
-    "Keep this image as it is — same text, same layout, same composition, same visual style. "
-    "ONLY change the background to something different but in a similar aesthetic, "
-    "OR slightly change the perspective / camera angle. "
-    "The new image must look very similar to the original but NOT identical — "
-    "just a fresh variation. "
-    "Preserve all text EXACTLY, keep all graphic elements, keep the overall mood."
-)
+def _build_prompt(exact_text: str) -> str:
+    """Buduje prompt Nano Banana z DOKLADNYM tekstem OCR do zachowania."""
+    text_instruction = ""
+    if exact_text.strip():
+        text_instruction = (
+            f"\n\nTHE EXACT TEXT THAT MUST APPEAR ON THE NEW IMAGE "
+            f"(copy it letter-by-letter, do not change a single character):\n"
+            f"```\n{exact_text}\n```\n"
+            f"Re-render this text in a similar font/position/style as in the original image. "
+            f"Check every word, every letter, every emoji — spelling must be IDENTICAL."
+        )
+
+    return (
+        "Create a VISUALLY DIFFERENT version of this slide that delivers the same message."
+        + text_instruction +
+        "\n\nSTRICT VISUAL RULES:\n"
+        "1. CHANGE the scene/location to a completely DIFFERENT setting. "
+        "If original shows a laptop on dark desk → show tablet/phone/different device in a "
+        "bright cafe, home office, outdoors, hands holding it, bedroom — anything different.\n"
+        "2. CHANGE the camera angle significantly — different zoom, different height, "
+        "different tilt, different framing.\n"
+        "3. CHANGE the background entirely — different lighting, different colors, "
+        "different props, different atmosphere.\n"
+        "4. KEEP the overall mood/vibe similar (professional, aesthetic, motivational) "
+        "so it still fits the same audience on TikTok/Instagram.\n\n"
+        "GOAL: make it look like a DIFFERENT creator made the same-topic slide. "
+        "Visually distinct from original, but text content 100% identical."
+    )
 
 
 def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
@@ -41,8 +61,11 @@ def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
     return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
 
-def _recreate_via_nano_banana(source_image: Path, output_path: Path) -> Path | None:
-    """Edytuje obraz przez Gemini 2.5 Flash Image (Nano Banana)."""
+def _recreate_via_nano_banana(source_image: Path, output_path: Path, exact_text: str = "") -> Path | None:
+    """Edytuje obraz przez Gemini 2.5 Flash Image (Nano Banana).
+
+    exact_text: dokladny tekst z OCR — przekazany do promptu zeby AI zachowal pisownie.
+    """
     if not GEMINI_API_KEY:
         return None
 
@@ -62,10 +85,12 @@ def _recreate_via_nano_banana(source_image: Path, output_path: Path) -> Path | N
         }
         mime_type = mime_map.get(suffix, "image/jpeg")
 
+        prompt = _build_prompt(exact_text)
+
         response = client.models.generate_content(
             model=NANO_BANANA_MODEL,
             contents=[
-                NANO_BANANA_PROMPT,
+                prompt,
                 types.Part.from_bytes(data=img_bytes, mime_type=mime_type),
             ],
         )
@@ -108,7 +133,11 @@ def recreate_slide(
                   Jeśli brak — fallback do kopii oryginału.
     """
     if source_image and Path(source_image).exists():
-        result = _recreate_via_nano_banana(Path(source_image), output_path)
+        result = _recreate_via_nano_banana(
+            Path(source_image),
+            output_path,
+            exact_text=slide_text.main_text,
+        )
         if result:
             return result
         print(f"[image_gen] Nano Banana nie zadzialalo dla slajdu {index}, kopiuje oryginal")
