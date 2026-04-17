@@ -25,32 +25,36 @@ NANO_BANANA_MODEL = "gemini-2.5-flash-image"
 
 
 def _build_prompt(exact_text: str) -> str:
-    """Buduje prompt Nano Banana z DOKLADNYM tekstem OCR do zachowania."""
+    """Buduje prompt Nano Banana — subtelne, naturalne wariacje fotografii."""
     text_instruction = ""
     if exact_text.strip():
         text_instruction = (
-            f"\n\nTHE EXACT TEXT THAT MUST APPEAR ON THE NEW IMAGE "
-            f"(copy it letter-by-letter, do not change a single character):\n"
+            f"\n\nTEXT THAT MUST STAY EXACTLY THE SAME on the image "
+            f"(copy letter-by-letter, every word, every emoji — do NOT translate or modify):\n"
             f"```\n{exact_text}\n```\n"
-            f"Re-render this text in a similar font/position/style as in the original image. "
-            f"Check every word, every letter, every emoji — spelling must be IDENTICAL."
+            f"Re-render text in the same font/position/size/color as the original."
         )
 
     return (
-        "Create a VISUALLY DIFFERENT version of this slide that delivers the same message."
+        "This is a real photograph. Create a slight variation of it — like another take "
+        "from the same photoshoot. The result must look like a REAL photo, NOT AI-generated, "
+        "NOT illustration, NOT CGI. Keep the photographic realism and natural look."
         + text_instruction +
-        "\n\nSTRICT VISUAL RULES:\n"
-        "1. CHANGE the scene/location to a completely DIFFERENT setting. "
-        "If original shows a laptop on dark desk → show tablet/phone/different device in a "
-        "bright cafe, home office, outdoors, hands holding it, bedroom — anything different.\n"
-        "2. CHANGE the camera angle significantly — different zoom, different height, "
-        "different tilt, different framing.\n"
-        "3. CHANGE the background entirely — different lighting, different colors, "
-        "different props, different atmosphere.\n"
-        "4. KEEP the overall mood/vibe similar (professional, aesthetic, motivational) "
-        "so it still fits the same audience on TikTok/Instagram.\n\n"
-        "GOAL: make it look like a DIFFERENT creator made the same-topic slide. "
-        "Visually distinct from original, but text content 100% identical."
+        "\n\nMAKE SMALL, NATURAL CHANGES (pick 2-3, keep the rest identical):\n"
+        "- Change camera angle SLIGHTLY (10-25 degrees different perspective, or slight zoom change)\n"
+        "- Change color of ONE element (e.g., clothing color, prop color, wall color)\n"
+        "- Slightly different lighting (e.g., warmer/cooler tone, softer/sharper shadows)\n"
+        "- Minor rearrangement of background items (not whole scene change)\n"
+        "- Slightly different time of day (e.g., morning vs afternoon light)\n\n"
+        "KEEP THESE THE SAME:\n"
+        "- Same overall setting/location (if laptop on desk → still laptop on desk)\n"
+        "- Same main subjects and props (same items in frame)\n"
+        "- Same general composition and framing\n"
+        "- Same photographic style and realism\n"
+        "- Same mood and aesthetic\n\n"
+        "The goal: the new photo should look like it came from the SAME creator's SAME session "
+        "— just a different shot. Natural, realistic, subtle variation. "
+        "TikTok-worthy realistic photo, no AI artifacts."
     )
 
 
