@@ -19,7 +19,7 @@ FONTS_DIR = PROJECT_DIR / "fonts"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # === MODELE GEMINI ===
-GEMINI_VISION_MODEL = "gemini-2.5-flash"
+GEMINI_VISION_MODEL = "gemini-2.0-flash"   # 1500 req/day free (OCR, tłum., opis)
 IMAGEN_MODEL = "imagen-4.0-fast-generate-001"
 
 # === OBRAZY ===

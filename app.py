@@ -552,8 +552,18 @@ if not st.session_state["generated"]:
 
         except Exception as e:
             progress.empty()
-            st.error(f"❌ Błąd: {e}")
-            st.info("💡 Sprobuj zakladki 'Wgraj pliki' — pobierz slajdy samodzielnie z ssstik.io/snaptik.app i wgraj.")
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                st.error("❌ Limit Gemini API wyczerpany na dziś (darmowy plan).")
+                st.warning(
+                    "**Co zrobić?**\n"
+                    "- Poczekaj do jutra (limit odnawia się o północy UTC)\n"
+                    "- Lub włącz billing w Google AI Studio → [aistudio.google.com](https://aistudio.google.com) "
+                    "(pierwsze $10 gratis przy rejestracji karty)"
+                )
+            else:
+                st.error(f"❌ Błąd: {e}")
+                st.info("💡 Sprobuj zakladki 'Wgraj pliki' — pobierz slajdy samodzielnie z ssstik.io/snaptik.app i wgraj.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
