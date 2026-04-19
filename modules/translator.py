@@ -6,11 +6,13 @@ from dataclasses import replace
 
 from google import genai
 
-from config import GEMINI_API_KEY, GEMINI_VISION_MODEL
+from config import get_api_key, GEMINI_VISION_MODEL
 from modules.ocr_reader import SlideText
 
 
-_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+def _client():
+    key = get_api_key()
+    return genai.Client(api_key=key) if key else None
 
 
 LANGUAGES = {
@@ -49,7 +51,8 @@ TEXT TO TRANSLATE:
 
 def translate_text(text: str, target_lang: str) -> str:
     """Tlumaczy tekst na target_lang. target_lang to kod: 'english', 'polish' itd."""
-    if not _client or target_lang == "original" or not text.strip():
+    client = _client()
+    if not client or target_lang == "original" or not text.strip():
         return text
 
     lang_name = LANG_NAMES.get(target_lang)
@@ -59,7 +62,7 @@ def translate_text(text: str, target_lang: str) -> str:
     prompt = TRANSLATE_PROMPT.format(target_lang=lang_name, text=text)
 
     try:
-        response = _client.models.generate_content(
+        response = client.models.generate_content(
             model=GEMINI_VISION_MODEL,
             contents=prompt,
         )

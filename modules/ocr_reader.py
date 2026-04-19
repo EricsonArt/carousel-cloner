@@ -9,9 +9,12 @@ from pathlib import Path
 
 from google import genai
 
-from config import GEMINI_API_KEY, GEMINI_VISION_MODEL
+from config import get_api_key, GEMINI_VISION_MODEL
 
-_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+def _client():
+    key = get_api_key()
+    return genai.Client(api_key=key) if key else None
 
 ANALYSIS_PROMPT = """Przeanalizuj ten obraz slajdu z karuzeli na Instagramie/TikToku.
 
@@ -48,8 +51,9 @@ def extract_text_from_slide(image_path: Path) -> SlideText:
     Analizuje slajd za pomocą Gemini Vision.
     Zwraca SlideText z tekstem, opisem stylu i kolorami.
     """
-    if not _client:
-        raise RuntimeError("Brak GEMINI_API_KEY w .env")
+    client = _client()
+    if not client:
+        raise RuntimeError("Brak GEMINI_API_KEY — wklej klucz w panelu aplikacji.")
 
     image_bytes = Path(image_path).read_bytes()
     b64 = base64.b64encode(image_bytes).decode("utf-8")
@@ -59,7 +63,7 @@ def extract_text_from_slide(image_path: Path) -> SlideText:
     mime_map = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
     mime_type = mime_map.get(suffix, "image/png")
 
-    response = _client.models.generate_content(
+    response = client.models.generate_content(
         model=GEMINI_VISION_MODEL,
         contents=[
             {

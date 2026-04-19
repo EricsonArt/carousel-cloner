@@ -18,6 +18,11 @@ FONTS_DIR = PROJECT_DIR / "fonts"
 # === API ===
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+
+def get_api_key() -> str:
+    """Czyta GEMINI_API_KEY dynamicznie — user moze nadpisac przez UI (os.environ)."""
+    return os.getenv("GEMINI_API_KEY", "") or GEMINI_API_KEY
+
 # === MODELE GEMINI ===
 GEMINI_VISION_MODEL = "gemini-2.0-flash"   # 1500 req/day free (OCR, tłum., opis)
 IMAGEN_MODEL = "imagen-4.0-fast-generate-001"

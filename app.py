@@ -3,6 +3,7 @@ Carousel Cloner — auto-pipeline Streamlit app.
 Wklej link → wszystko dzieje się automatycznie → ZIP auto-pobiera się.
 """
 import base64
+import os
 import sys
 import time
 from pathlib import Path
@@ -266,6 +267,37 @@ st.markdown("""
 if not st.session_state["generated"]:
     from modules.image_generator import VARIATION_PROMPTS, get_prompt_for_intensity
     from modules.translator import LANGUAGES
+
+    # ── Własny klucz API ──────────────────────────────────────────────────────
+    with st.expander("🔑 Własny klucz Gemini API (opcjonalne — zwiększa limity)", expanded=False):
+        st.markdown(
+            "<div style='color:#a0a0b8; font-size:0.88rem; margin-bottom:0.6rem;'>"
+            "Darmowy klucz z <a href='https://aistudio.google.com/apikey' target='_blank' "
+            "style='color:#c084fc;'>aistudio.google.com/apikey</a> — wklej żeby używać swojej "
+            "kwoty zamiast wspólnej (darmowy plan: 1500 req/dzień OCR + ~100 obrazów Nano Banana). "
+            "Klucz jest tylko w pamięci sesji, nie zapisuje się."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        user_key = st.text_input(
+            "GEMINI_API_KEY",
+            value=st.session_state.get("user_api_key", ""),
+            type="password",
+            placeholder="AIza...",
+            key="user_api_key_input",
+            label_visibility="collapsed",
+        )
+        if user_key.strip():
+            st.session_state["user_api_key"] = user_key.strip()
+            os.environ["GEMINI_API_KEY"] = user_key.strip()
+            st.markdown(
+                "<div style='color:#6ee7b7; font-size:0.85rem;'>✓ Używam Twojego klucza</div>",
+                unsafe_allow_html=True,
+            )
+        elif st.session_state.get("user_api_key"):
+            # User wyczyscil pole - wroc do domyslnego
+            st.session_state.pop("user_api_key", None)
+            os.environ.pop("GEMINI_API_KEY", None)
 
     # ── Ustawienia: intensywnosc + jezyk ─────────────────────────────────────
     with st.expander("⚙️ Ustawienia", expanded=True):

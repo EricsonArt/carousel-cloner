@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from config import GEMINI_API_KEY, API_DELAY_SECONDS
+from config import get_api_key, API_DELAY_SECONDS
 from modules.ocr_reader import SlideText
 
 
@@ -107,14 +107,14 @@ def _recreate_via_nano_banana(
     custom_prompt: str | None = None,
 ) -> Path | None:
     """Edytuje obraz przez Gemini 2.5 Flash Image (Nano Banana)."""
-    if not GEMINI_API_KEY:
+    if not get_api_key():
         return None
 
     try:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=get_api_key())
 
         img_bytes = Path(source_image).read_bytes()
         suffix = Path(source_image).suffix.lower()
@@ -195,7 +195,7 @@ def add_cta_to_last_slide(
     Nakłada tekst CTA na istniejący slajd (image-to-image).
     Zachowuje oryginalny tekst, dodaje CTA jako naturalny overlay.
     """
-    if not GEMINI_API_KEY:
+    if not get_api_key():
         return _fallback_copy_original(slide_path, output_path)
 
     existing_preserve = ""
@@ -225,7 +225,7 @@ def add_cta_to_last_slide(
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=get_api_key())
         img_bytes = Path(slide_path).read_bytes()
         suffix = Path(slide_path).suffix.lower()
         mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg"}.get(suffix.lstrip("."), "image/png")
@@ -260,7 +260,7 @@ def generate_extra_cta_slide(
     Używa reference_slide TYLKO do ustalenia palety kolorów/vibe'u,
     ale tworzy zupełnie nowy, minimalistyczny slajd zorientowany na CTA.
     """
-    if not GEMINI_API_KEY:
+    if not get_api_key():
         return None
 
     prompt = (
@@ -288,7 +288,7 @@ def generate_extra_cta_slide(
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=get_api_key())
         # Uzywamy referencji tylko jako inspiracji koloru, nie jako baza do edycji
         img_bytes = Path(reference_slide).read_bytes()
         suffix = Path(reference_slide).suffix.lower()

@@ -6,9 +6,12 @@ from dataclasses import dataclass, field
 
 from google import genai
 
-from config import GEMINI_API_KEY, GEMINI_VISION_MODEL
+from config import get_api_key, GEMINI_VISION_MODEL
 
-_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+def _client():
+    key = get_api_key()
+    return genai.Client(api_key=key) if key else None
 
 REWRITE_PROMPT = """Rewrite the following carousel post description for Instagram/TikTok.
 
@@ -60,7 +63,8 @@ def rewrite_description(
     Przepisuje opis i hashtagi przez Gemini na target_lang.
     target_lang: 'original' | 'polish' | 'english' | 'german' ...
     """
-    if not _client:
+    client = _client()
+    if not client:
         return RewrittenContent(
             description=original_description,
             hashtags=original_hashtags,
@@ -74,7 +78,7 @@ def rewrite_description(
         target_lang=lang_display,
     )
 
-    response = _client.models.generate_content(
+    response = client.models.generate_content(
         model=GEMINI_VISION_MODEL,
         contents=prompt,
     )
