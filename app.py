@@ -278,7 +278,7 @@ if not st.session_state["generated"]:
             "<b>Jak zdobyć klucz (30 sekund, darmowy):</b><br>"
             "1. Wejdź na <a href='https://aistudio.google.com/apikey' target='_blank' "
             "style='color:#c084fc; font-weight:700;'>aistudio.google.com/apikey</a><br>"
-            "2. Kliknij <b>„Create API key"</b> → skopiuj<br>"
+            "2. Kliknij <b>&bdquo;Create API key&rdquo;</b> &rarr; skopiuj<br>"
             "3. Wklej poniżej ↓<br><br>"
             "<span style='color:#a0a0b8;'>Limity darmowe: 1500 OCR/dzień + ~100 obrazów Nano Banana/dzień. "
             "Klucz jest tylko w pamięci sesji, nie zapisuje się.</span>"
