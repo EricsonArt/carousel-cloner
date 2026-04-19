@@ -268,14 +268,20 @@ if not st.session_state["generated"]:
     from modules.image_generator import VARIATION_PROMPTS, get_prompt_for_intensity
     from modules.translator import LANGUAGES
 
-    # ── Własny klucz API ──────────────────────────────────────────────────────
-    with st.expander("🔑 Własny klucz Gemini API (opcjonalne — zwiększa limity)", expanded=False):
+    # ── Własny klucz API (widoczny od razu) ──────────────────────────────────
+    has_own_key = bool(st.session_state.get("user_api_key", "").strip())
+    key_label = "🔑 Twój klucz Gemini API ✓" if has_own_key else "🔑 WKLEJ SWÓJ DARMOWY KLUCZ GEMINI API (wymagane jeśli wspólny limit wyczerpany)"
+
+    with st.expander(key_label, expanded=not has_own_key):
         st.markdown(
-            "<div style='color:#a0a0b8; font-size:0.88rem; margin-bottom:0.6rem;'>"
-            "Darmowy klucz z <a href='https://aistudio.google.com/apikey' target='_blank' "
-            "style='color:#c084fc;'>aistudio.google.com/apikey</a> — wklej żeby używać swojej "
-            "kwoty zamiast wspólnej (darmowy plan: 1500 req/dzień OCR + ~100 obrazów Nano Banana). "
-            "Klucz jest tylko w pamięci sesji, nie zapisuje się."
+            "<div style='color:#e0e0f0; font-size:0.95rem; margin-bottom:0.8rem; line-height:1.6;'>"
+            "<b>Jak zdobyć klucz (30 sekund, darmowy):</b><br>"
+            "1. Wejdź na <a href='https://aistudio.google.com/apikey' target='_blank' "
+            "style='color:#c084fc; font-weight:700;'>aistudio.google.com/apikey</a><br>"
+            "2. Kliknij <b>„Create API key"</b> → skopiuj<br>"
+            "3. Wklej poniżej ↓<br><br>"
+            "<span style='color:#a0a0b8;'>Limity darmowe: 1500 OCR/dzień + ~100 obrazów Nano Banana/dzień. "
+            "Klucz jest tylko w pamięci sesji, nie zapisuje się.</span>"
             "</div>",
             unsafe_allow_html=True,
         )
@@ -291,7 +297,8 @@ if not st.session_state["generated"]:
             st.session_state["user_api_key"] = user_key.strip()
             os.environ["GEMINI_API_KEY"] = user_key.strip()
             st.markdown(
-                "<div style='color:#6ee7b7; font-size:0.85rem;'>✓ Używam Twojego klucza</div>",
+                "<div style='color:#6ee7b7; font-size:0.9rem; font-weight:600;'>"
+                "✓ Używam Twojego klucza — masz pełne darmowe limity</div>",
                 unsafe_allow_html=True,
             )
         elif st.session_state.get("user_api_key"):
@@ -586,13 +593,25 @@ if not st.session_state["generated"]:
             progress.empty()
             err_str = str(e)
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-                st.error("❌ Limit Gemini API wyczerpany na dziś (darmowy plan).")
-                st.warning(
-                    "**Co zrobić?**\n"
-                    "- Poczekaj do jutra (limit odnawia się o północy UTC)\n"
-                    "- Lub włącz billing w Google AI Studio → [aistudio.google.com](https://aistudio.google.com) "
-                    "(pierwsze $10 gratis przy rejestracji karty)"
-                )
+                has_key = bool(st.session_state.get("user_api_key", "").strip())
+                if not has_key:
+                    st.error("❌ Wspólny klucz Gemini wyczerpał dzienny limit.")
+                    st.warning(
+                        "**Rozwiązanie (30 sekund, darmowe):**\n"
+                        "1. Rozwiń u góry **🔑 WKLEJ SWÓJ DARMOWY KLUCZ GEMINI API**\n"
+                        "2. Kliknij link [aistudio.google.com/apikey](https://aistudio.google.com/apikey)\n"
+                        "3. Stwórz klucz, skopiuj, wklej w pole\n"
+                        "4. Kliknij **Sklonuj** ponownie\n\n"
+                        "Twój darmowy klucz daje 1500 OCR/dzień + ~100 obrazów Nano Banana."
+                    )
+                else:
+                    st.error("❌ Twój klucz Gemini wyczerpał dzienny limit.")
+                    st.warning(
+                        "**Co zrobić?**\n"
+                        "- Poczekaj do północy UTC (limit darmowy się odnowi)\n"
+                        "- Lub włącz billing: [aistudio.google.com](https://aistudio.google.com) (pierwsze $10 gratis)\n"
+                        "- Lub użyj innego konta Google → wygeneruj nowy klucz"
+                    )
             else:
                 st.error(f"❌ Błąd: {e}")
                 st.info("💡 Sprobuj zakladki 'Wgraj pliki' — pobierz slajdy samodzielnie z ssstik.io/snaptik.app i wgraj.")
